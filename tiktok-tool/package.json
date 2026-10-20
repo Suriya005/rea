@@ -1,0 +1,14 @@
+{
+  "name": "tiktok-interactive-tool",
+  "version": "1.0.0",
+  "description": "Custom TikTok LIVE Interactive & Automation Tool",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "tiktok-live-connector": "^1.1.13",
+    "ws": "^8.18.0"
+  }
+}
