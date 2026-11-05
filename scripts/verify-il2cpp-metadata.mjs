@@ -9,7 +9,7 @@ import { toolContract } from "../dist/contracts/toolContracts.js";
 import { analysisViewResultSchema } from "../dist/domain/analysisView/analysisView.js";
 import { ArtifactResourceScope } from "../dist/artifacts/ArtifactResourceScope.js";
 import { mcpTextValue } from "./lib/mcp-verifier-results.mjs";
-import { closeVerifierResources } from "./lib/verifier-cleanup.mjs";
+import { withVerifierCleanup } from "./lib/verifier-cleanup.mjs";
 import { hashVerifierFile } from "./lib/verifier-file-resources.mjs";
 
 const args = process.argv.slice(2);
@@ -47,8 +47,7 @@ const call = async (name, input) => {
   return JSON.parse(mcpTextValue(response));
 };
 const resources = new ArtifactResourceScope();
-let primaryError;
-try {
+await withVerifierCleanup(async () => {
   await client.connect(transport);
   const { tools } = await client.listTools();
   assert(tools.some((tool) => tool.name === operation));
@@ -125,6 +124,16 @@ try {
       events: report.events.length,
       parameters: report.parameters.length,
       string_literals: report.string_literals.length,
+      // The verifier selects no binary, so native observations are unrequested.
+      code_gen_modules: null,
+      method_addresses: null,
+      method_address_states: null,
+      return_types: null,
+      field_types: null,
+      parameter_types: null,
+      generic_method_instances: null,
+      generic_method_instance_states: null,
+      generic_method_issues: null,
     });
     const page = analysisViewResultSchema.parse(
       (
@@ -175,13 +184,5 @@ try {
       `[ok] summary and page parity; ${report.images.length} images, ${report.types.length} types, ${report.methods.length} methods; complete Evidence ${Buffer.byteLength(stdout)} bytes, summary ${Buffer.byteLength(JSON.stringify(summary))} bytes; CLI ${cliMs} ms`,
     );
   }
-} catch (cause) {
-  primaryError = cause;
-  throw cause;
-} finally {
-  await closeVerifierResources(
-    [() => client.close(), () => transport.close(), () => resources.close()],
-    primaryError,
-  );
-}
+}, [() => client.close(), () => transport.close(), () => resources.close()]);
 console.log("All asserted IL2CPP metadata CLI/MCP checks passed");
